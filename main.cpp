@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
 #define size 7
-#define maxdepth 2
+int maxdepth = 2;
 using namespace std;
 const int Infinity = numeric_limits<int>::max();
 
@@ -15,10 +15,21 @@ const int Infinity = numeric_limits<int>::max();
  *  G      x x x x x x x
 */
 
+/*
+vector<vector<int>> evalBoard{
+    {2, 2, 2, 2, 2, 2, 2},
+    {2, 1, 1, 2, 1, 1, 2},
+    {2, 1, 2, 3, 2, 1, 2},
+    {2, 2, 3, 3, 3, 2, 2},
+    {2, 1, 2, 3, 2, 1, 2},
+    {2, 1, 1, 2, 1, 1, 2},
+    {2, 2, 2, 2, 2, 2, 2}
+};
+*/
+
 vector<vector<int>> board(size, vector<int>(size, 0));
 
 int ChaosInput; // chip
-int randomChip;
 string InputStr; // Start, End, Order move
 
 std::string BestMoveForChaos();
@@ -35,7 +46,7 @@ void showBoard(vector<vector<int>> board)
 }
 
 int evaluate(vector<vector<int>> board){
-    int score = 0;
+    int eval[size + 1] = {0};
     for (int len = 2; len <= size; len++)
     {
         // Horizontal palindromes
@@ -51,7 +62,8 @@ int evaluate(vector<vector<int>> board){
                     break;
                 }
             }
-            if (flag) score += len;
+            if (flag)
+                eval[len]+= len;
         }
 
         // Vertical palindromes
@@ -67,10 +79,11 @@ int evaluate(vector<vector<int>> board){
                     break;
                 }
             }
-            if (flag) score += len;
+            if (flag)
+                eval[len]+= len;
         }
     }
-    return score;
+    return eval[2] + eval[3]*2 + eval[4]*2 + eval[5]*3 + eval[6]*3 + eval[7]*4;
 }
 int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, int beta);
 
@@ -79,11 +92,11 @@ signed main()
     ios_base::sync_with_stdio(NULL);
     cin.tie(0);
     cout.tie(0);
-    srand(time(NULL));
 
     while(cin >> InputStr)
     {
         if (InputStr[0] == 'S'){
+            //maxdepth = 3;
             for (int i = 0; i < size; i++)
             for (int j = 0; j < size; j++)
                 board[i][j] = 0;
@@ -111,21 +124,25 @@ signed main()
 string BestMoveForChaos()
 {
     int bestScore = Infinity;
-    int bestX, bestY;
+    int bestX = -1, bestY = -1;
     for (int i = 0; i < size; i++)
     for (int j = 0; j < size; j++)
     {
-        if (!board[i][j])
+        if (board[i][j]) continue;
+        if (bestX < 0 && bestY < 0)
         {
-            board[i][j] = ChaosInput;
-            int score = minimaxAlg(board, 1, true, -Infinity, Infinity);
-            board[i][j] = 0;
-            if (score <= bestScore)
-            {
-                bestScore = score;
-                bestX = i;
-                bestY = j;
-            }
+            bestX = i;
+            bestY = j;
+        }
+
+        board[i][j] = ChaosInput;
+        int score = minimaxAlg(board, 1, true, -Infinity, Infinity);
+        board[i][j] = 0;
+        if (score < bestScore)
+        {
+            bestScore = score;
+            bestX = i;
+            bestY = j;
         }
     }
     board[bestX][bestY] = ChaosInput;
@@ -134,7 +151,7 @@ string BestMoveForChaos()
 
 string BestMoveForOrder()
 {
-    int bestScore = -1 * Infinity;
+    int bestScore = -Infinity;
     pair<int, int> srcMove;
     pair<int, int> bestMove;
     for (int thisX = 0; thisX < size; thisX++)
@@ -144,7 +161,7 @@ string BestMoveForOrder()
         int thisChip = board[thisX][thisY];
         for (int i = thisX; i < size; i++)
         {
-            if (board[i][thisY]) break;
+            if (board[i][thisY] && thisX != i) break;
             board[thisX][thisY] = 0;
             board[i][thisY] = thisChip;
             int score = minimaxAlg(board, 1, false, -Infinity, Infinity);
@@ -154,8 +171,8 @@ string BestMoveForOrder()
                 srcMove = {thisX, thisY};
                 bestMove = {i, thisY};
             }
-            board[thisX][thisY] = thisChip;
             board[i][thisY] = 0;
+            board[thisX][thisY] = thisChip;
         }
         for (int i = thisX - 1; i >= 0; i--)
         {
@@ -169,8 +186,9 @@ string BestMoveForOrder()
                 srcMove = {thisX, thisY};
                 bestMove = {i, thisY};
             }
-            board[thisX][thisY] = thisChip;
             board[i][thisY] = 0;
+            board[thisX][thisY] = thisChip;
+
         }
         for (int j = thisY + 1; j < size; j++)
         {
@@ -185,8 +203,9 @@ string BestMoveForOrder()
                 srcMove = {thisX, thisY};
                 bestMove = {thisX, j};
             }
-            board[thisX][thisY] = thisChip;
             board[thisX][j] = 0;
+            board[thisX][thisY] = thisChip;
+
         }
         for (int j = thisY - 1; j >= 0; j--)
         {
@@ -201,8 +220,9 @@ string BestMoveForOrder()
                 srcMove = {thisX, thisY};
                 bestMove = {thisX, j};
             }
-            board[thisX][thisY] = thisChip;
             board[thisX][j] = 0;
+            board[thisX][thisY] = thisChip;
+
         }
     }
     int foo = board[srcMove.first][srcMove.second];
@@ -215,12 +235,12 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
 {
     //cout << "BOARD || DEPTH = " << depth << " IS " << (isOrder ? "ORDER's" : "CHAOS'") << " TURN\n";
     //showBoard(board);
-    if (depth == maxdepth){
+    if (depth >= maxdepth){
         return evaluate(board);
     }
+
     if (isOrder)
     {
-        randomChip = rand() % 7 + 1;
         int bestScore = -Infinity;
         bool pruned = false;
         for (int thisX = 0; thisX < size && !pruned; thisX++)
@@ -230,19 +250,21 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
             int thisChip = board[thisX][thisY];
             for (int i = thisX; i < size && !pruned; i++)
             {
-                if (board[i][thisY]) break;
+                if (board[i][thisY] && thisX != i) break;
                 board[thisX][thisY] = 0;
                 board[i][thisY] = thisChip;
                 int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
                 bestScore = max(score, bestScore);
-                board[thisX][thisY] = thisChip;
                 board[i][thisY] = 0;
-                if (bestScore >= beta)
+                board[thisX][thisY] = thisChip;
+
+                alpha = max(alpha, score);
+                if (beta <= alpha)
                 {
                     pruned = true;
                     break;
                 }
-                alpha = max(alpha, bestScore);
+
             }
             for (int i = thisX - 1; i >= 0 && !pruned; i--)
             {
@@ -251,14 +273,15 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
                 board[i][thisY] = thisChip;
                 int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
                 bestScore = max(score, bestScore);
-                board[thisX][thisY] = thisChip;
                 board[i][thisY] = 0;
-                if (bestScore >= beta)
+                board[thisX][thisY] = thisChip;
+
+                alpha = max(alpha, score);
+                if (beta <= alpha)
                 {
                     pruned = true;
                     break;
                 }
-                alpha = max(alpha, bestScore);
             }
             for (int j = thisY + 1; j < size && !pruned; j++)
             {
@@ -268,14 +291,15 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
                 board[thisX][j] = thisChip;
                 int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
                 bestScore = max(score, bestScore);
-                board[thisX][thisY] = thisChip;
                 board[thisX][j] = 0;
-                if (bestScore >= beta)
+                board[thisX][thisY] = thisChip;
+
+                alpha = max(alpha, score);
+                if (beta <= alpha)
                 {
                     pruned = true;
                     break;
                 }
-                alpha = max(alpha, bestScore);
             }
             for (int j = thisY - 1; j >= 0 && !pruned; j--)
             {
@@ -285,14 +309,15 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
                 board[thisX][j] = thisChip;
                 int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
                 bestScore = max(score, bestScore);
-                board[thisX][thisY] = thisChip;
                 board[thisX][j] = 0;
-                if (bestScore >= beta)
+                board[thisX][thisY] = thisChip;
+
+                alpha = max(alpha, score);
+                if (beta <= alpha)
                 {
                     pruned = true;
                     break;
                 }
-                alpha = max(alpha, bestScore);
             }
         }
         return bestScore;
@@ -301,22 +326,22 @@ int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, in
     {
         bool pruned = false;
         int bestScore = Infinity;
+        for (int k = 1; k <= size && !pruned; k++)
         for (int i = 0; i < size && !pruned; i++)
         for (int j = 0; j < size && !pruned; j++)
         {
-            if (!board[i][j])
-            {
-                board[i][j] = randomChip;
-                int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
-                board[i][j] = 0;
-                bestScore = min(score, bestScore);
-            }
-            if (bestScore <= alpha)
+            if (board[i][j]) continue;
+            board[i][j] = k;
+            int score = minimaxAlg(board, depth + 1, !isOrder, alpha, beta);
+            board[i][j] = 0;
+            bestScore = min(score, bestScore);
+
+            beta = min(beta, score);
+            if (beta <= alpha)
             {
                 pruned = true;
                 break;
             }
-            beta = min(beta, bestScore);
         }
         return bestScore;
     }
