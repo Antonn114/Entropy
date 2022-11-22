@@ -1,10 +1,13 @@
-#include <bits/stdc++.h>
-#define size 7
-int maxdepth = 2;
-using namespace std;
-const int Infinity = numeric_limits<int>::max();
+/* Bot for Entropy (Codecup 2023)
+ *
+ * Author: D. Ngoc Anh Trung and N. Dang Dung
+ *
+ * November 2022
+ *
+*/
 
-/*   COL - a b c d e f g
+/*   BOARD REPRESENTATION
+ *   COL - a b c d e f g
  * ROW
  *  A      x x x x x x x
  *  B      x x x x x x x
@@ -15,38 +18,65 @@ const int Infinity = numeric_limits<int>::max();
  *  G      x x x x x x x
 */
 
-/*
-vector<vector<int>> evalBoard{
-    {2, 2, 2, 2, 2, 2, 2},
-    {2, 1, 1, 2, 1, 1, 2},
-    {2, 1, 2, 3, 2, 1, 2},
-    {2, 2, 3, 3, 3, 2, 2},
-    {2, 1, 2, 3, 2, 1, 2},
-    {2, 1, 1, 2, 1, 1, 2},
-    {2, 2, 2, 2, 2, 2, 2}
-};
-*/
+#include <bits/stdc++.h>
+#define size 7
+int maxdepth = 2;
+using namespace std;
+const int Infinity = numeric_limits<int>::max();
 
 vector<vector<int>> board(size, vector<int>(size, 0));
-
-int ChaosInput; // chip
-string InputStr; // Start, End, Order move
+int ChaosInput;     // Input for chip colour
+string InputStr;    // Start, End, Input for Chaos and Order
 
 std::string BestMoveForChaos();
 std::string BestMoveForOrder();
+void showBoard(vector<vector<int>> board);
+int evaluate(vector<vector<int>> board);
+int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, int beta);
 
-void showBoard(vector<vector<int>> board)
+/// Driver code
+
+int main()
 {
-    for(int i = 0; i < size; i++)
+    ios_base::sync_with_stdio(NULL); cin.tie(0); cout.tie(0);
+
+    while(cin >> InputStr)
     {
-        for (int j = 0; j < size; j++)
-            cout << board[i][j] << " ";
-        cout << endl;
+        if (InputStr[0] == 'S')
+        {
+            // maxdepth = 3; <- also make sure other alg works fast before increasing depth
+            cin >> ChaosInput;
+            cout << BestMoveForChaos() << endl;
+        }else if (InputStr[0] == 'Q')
+        {
+            return 0;
+        }else
+        {
+            if (InputStr.length() == 4)
+            {
+                // Input format: AbAc
+                int foo = board[InputStr[0] - 'A'][InputStr[1] - 'a'];
+                board[InputStr[0] - 'A'][InputStr[1] - 'a'] = 0;
+                board[InputStr[2] - 'A'][InputStr[3] - 'a'] = foo;
+                cin >> ChaosInput;
+                cout << BestMoveForChaos() << endl;
+            }else if (InputStr.length() == 3)
+            {
+                // Input format: 5Aa
+                board[InputStr[1] - 'A'][InputStr[2] - 'a'] = InputStr[0] - '0';
+                cout << BestMoveForOrder() << endl;
+            }
+        }
     }
+
+    return 0;
 }
 
 int evaluate(vector<vector<int>> board){
+
+    // Distribution of w on evaluation of each length of palindromes
     int eval[size + 1] = {0};
+
     for (int len = 2; len <= size; len++)
     {
         // Horizontal palindromes
@@ -85,42 +115,8 @@ int evaluate(vector<vector<int>> board){
     }
     return eval[2] + eval[3]*2 + eval[4]*2 + eval[5]*3 + eval[6]*3 + eval[7]*4;
 }
-int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, int beta);
 
-signed main()
-{
-    ios_base::sync_with_stdio(NULL);
-    cin.tie(0);
-    cout.tie(0);
-
-    while(cin >> InputStr)
-    {
-        if (InputStr[0] == 'S'){
-            //maxdepth = 3;
-            for (int i = 0; i < size; i++)
-            for (int j = 0; j < size; j++)
-                board[i][j] = 0;
-            cin >> ChaosInput;
-            cout << BestMoveForChaos() << endl;
-        }else if (InputStr[0] == 'Q')
-        {
-            exit(0);
-        }else if (InputStr.length() == 4){
-            int foo = board[InputStr[0] - 'A'][InputStr[1] - 'a'];
-            board[InputStr[0] - 'A'][InputStr[1] - 'a'] = 0;
-            board[InputStr[2] - 'A'][InputStr[3] - 'a'] = foo;
-            cin >> ChaosInput;
-            cout << BestMoveForChaos() << endl;
-        }else if (InputStr.length() == 3)
-        {
-            board[InputStr[1] - 'A'][InputStr[2] - 'a'] = InputStr[0] - '0';
-            cout << BestMoveForOrder() << endl;
-        }
-    }
-
-    return 0;
-}
-
+/// CHAOS' MOVE
 string BestMoveForChaos()
 {
     int bestScore = Infinity;
@@ -149,6 +145,7 @@ string BestMoveForChaos()
     return string{bestX + 'A', bestY + 'a'};
 }
 
+/// ORDER'S MOVE
 string BestMoveForOrder()
 {
     int bestScore = -Infinity;
@@ -231,10 +228,15 @@ string BestMoveForOrder()
     return string{srcMove.first + 'A', srcMove.second + 'a', bestMove.first + 'A', bestMove.second + 'a'};
 }
 
+
+/// MAIN SEARCH ALGORITHM
+// implemented:
+//      minimax
+//      alpha - beta pruning
+
+
 int minimaxAlg(vector<vector<int>> board, int depth, bool isOrder, int alpha, int beta)
 {
-    //cout << "BOARD || DEPTH = " << depth << " IS " << (isOrder ? "ORDER's" : "CHAOS'") << " TURN\n";
-    //showBoard(board);
     if (depth >= maxdepth){
         return evaluate(board);
     }
