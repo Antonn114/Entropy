@@ -11,7 +11,7 @@
 
 using namespace std;
 
-const int maxdepth = 2;
+int maxdepth = 2;
 const int unitbonus = 2;
 const int Infinity = numeric_limits<int>::max();
 
@@ -24,7 +24,7 @@ int iteratingdepth = 1;
 
 vector<vector<int>> board(maxsize, vector<int>(maxsize, 0));
 vector<Piece> PlacedPieces;
-unordered_map<string, int> TranspositionalTable;
+unordered_map<string, pair<int, int>> TranspositionTable;
 vector<vector<vector<int>>> bonusEvaluations(maxsize + 1, board);
 
 int ChaosInput;     // Input for chip colour
@@ -35,6 +35,25 @@ std::string BestMoveForOrder();
 int evaluate();
 int minimaxAlg(int depth, bool isOrder, int alpha, int beta);
 
+bool compPiece( Piece const& a,  Piece const& b)
+{
+    if (a.x != b.x) return a.x < b.x;
+    else if (a.y != b.y) return a.y < b.y;
+    else return a.color <= b.color;
+}
+
+string VPtoString(vector<Piece> VP)
+{
+    string s;
+    for (int i = 0; i < VP.size(); i++)
+    {
+        s.push_back(VP[i].color + '0');
+        s.push_back(VP[i].x + '0');
+        s.push_back(VP[i].y + '0');
+    }
+    return s;
+}
+
 /// Driver code
 
 int main()
@@ -44,8 +63,10 @@ int main()
     PlacedPieces.clear();
     while(getline(cin, InputStr))
     {
+        //TranspositionTable.clear();
         if (InputStr == "Start")
         {
+            maxdepth = 3;
             continue;
         }else if (InputStr == "Quit")
         {
@@ -135,7 +156,7 @@ int evaluate(){
             if (flag) eval[len]+= len + bonusScore;
         }
     }
-    return eval[2] + eval[3]*2 + eval[4]*3 + eval[5]*3 + eval[6]*4 + eval[7]*4;
+    return max(eval[2] + eval[3]*2 + eval[4]*3 + eval[5]*3 + eval[6]*4 + eval[7]*4, 1);
 }
 
 // Slide and place commands
@@ -162,31 +183,28 @@ string BestMoveForChaos()
 {
     int bestScore = Infinity;
     int bestX = -1, bestY = -1;
-    //for (iteratingdepth = 1; iteratingdepth <= maxdepth; iteratingdepth++)
-    //{
-        for (int i = 0; i < maxsize; i++)
-        for (int j = 0; j < maxsize; j++)
+    for (int i = 0; i < maxsize; i++)
+    for (int j = 0; j < maxsize; j++)
+    {
+        if (board[i][j]) continue;
+        if (bestX < 0 || bestY < 0)
         {
-            if (board[i][j]) continue;
-            if (bestX < 0 || bestY < 0)
-            {
-                bestX = i;
-                bestY = j;
-            }
-
-            board[i][j] = ChaosInput;
-            PlacedPieces.push_back(Piece(i, j, ChaosInput));
-            int score = minimaxAlg(1, true, -Infinity, Infinity);
-            PlacedPieces.pop_back();
-            board[i][j] = 0;
-            if (score < bestScore)
-            {
-                bestScore = score;
-                bestX = i;
-                bestY = j;
-            }
+            bestX = i;
+            bestY = j;
         }
-    //}
+
+        board[i][j] = ChaosInput;
+        PlacedPieces.push_back(Piece(i, j, ChaosInput));
+        int score = minimaxAlg(1, true, -Infinity, Infinity);
+        PlacedPieces.pop_back();
+        board[i][j] = 0;
+        if (score < bestScore)
+        {
+            bestScore = score;
+            bestX = i;
+            bestY = j;
+        }
+    }
 
     board[bestX][bestY] = ChaosInput;
     PlacedPieces.push_back(Piece(bestX, bestY, ChaosInput));
@@ -196,8 +214,7 @@ string BestMoveForChaos()
     {
         for (int j = bestY%unitbonus; j < maxsize; j+=unitbonus)
         {
-            //bonusEvaluations[ChaosInput][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - bestX) + abs(j - bestY))/unitbonus;
-            bonusEvaluations[ChaosInput][i][j] ++;
+            bonusEvaluations[ChaosInput][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - bestX) + abs(j - bestY))/unitbonus;
         }
     }
 
@@ -215,79 +232,75 @@ string BestMoveForOrder()
     char orientation = 'x';
     int toMove = 0;
     int newPosition = 0;
-    //for (iteratingdepth = 1; iteratingdepth <= maxdepth; iteratingdepth++)
-    //{
-        for (int k = 0; k < PlacedPieces.size(); k++)
+    for (int k = 0; k < PlacedPieces.size(); k++)
+    {
+        if (!PlacedPieces[k].color) continue;
+        int thisX = PlacedPieces[k].x;
+        int thisY = PlacedPieces[k].y;
+        int thisChip = PlacedPieces[k].color;
+        for (int i = thisX; i < maxsize; i++)
         {
-            if (!PlacedPieces[k].color) continue;
-            int thisX = PlacedPieces[k].x;
-            int thisY = PlacedPieces[k].y;
-            int thisChip = PlacedPieces[k].color;
-            for (int i = thisX; i < maxsize; i++)
+            if (board[i][thisY] && thisX != i) break;
+            Slide('x', k, i);
+            int score = minimaxAlg(1, false, -Infinity, Infinity);
+            Slide('x', k, thisX);
+            if (bestScore <= score)
             {
-                if (board[i][thisY] && thisX != i) break;
-                Slide('x', k, i);
-                int score = minimaxAlg(1, false, -Infinity, Infinity);
-                Slide('x', k, thisX);
-                if (bestScore <= score)
-                {
-                    bestScore = score;
-                    orientation = 'x';
-                    toMove = k;
-                    newPosition = i;
-                }
-            }
-            for (int i = thisX - 1; i >= 0; i--)
-            {
-                if (board[i][thisY]) break;
-                Slide('x', k, i);
-                int score = minimaxAlg(1, false, -Infinity, Infinity);
-                Slide('x', k, thisX);
-                if (bestScore <= score)
-                {
-                    bestScore = score;
-                    orientation = 'x';
-                    toMove = k;
-                    newPosition = i;
-                }
-            }
-            for (int j = thisY + 1; j < maxsize; j++)
-            {
-                if (board[thisX][j]) break;
-                Slide('y', k, j);
-                int score = minimaxAlg(1, false, -Infinity, Infinity);
-                Slide('y', k, thisY);
-                if (bestScore <= score)
-                {
-                    bestScore = score;
-                    orientation = 'y';
-                    toMove = k;
-                    newPosition = j;
-                }
-
-            }
-            for (int j = thisY - 1; j >= 0; j--)
-            {
-                if (board[thisX][j]) break;
-                Slide('y', k, j);
-                int score = minimaxAlg(1, false, -Infinity, Infinity);
-                Slide('y', k, thisY);
-                if (bestScore <= score)
-                {
-                    orientation = 'y';
-                    toMove = k;
-                    newPosition = j;
-                }
+                bestScore = score;
+                orientation = 'x';
+                toMove = k;
+                newPosition = i;
             }
         }
-    //}
+        for (int i = thisX - 1; i >= 0; i--)
+        {
+            if (board[i][thisY]) break;
+            Slide('x', k, i);
+            int score = minimaxAlg(1, false, -Infinity, Infinity);
+            Slide('x', k, thisX);
+            if (bestScore <= score)
+            {
+                bestScore = score;
+                orientation = 'x';
+                toMove = k;
+                newPosition = i;
+            }
+        }
+        for (int j = thisY + 1; j < maxsize; j++)
+        {
+            if (board[thisX][j]) break;
+            Slide('y', k, j);
+            int score = minimaxAlg(1, false, -Infinity, Infinity);
+            Slide('y', k, thisY);
+            if (bestScore <= score)
+            {
+                bestScore = score;
+                orientation = 'y';
+                toMove = k;
+                newPosition = j;
+            }
+
+        }
+        for (int j = thisY - 1; j >= 0; j--)
+        {
+            if (board[thisX][j]) break;
+            Slide('y', k, j);
+            int score = minimaxAlg(1, false, -Infinity, Infinity);
+            Slide('y', k, thisY);
+            if (bestScore <= score)
+            {
+                orientation = 'y';
+                toMove = k;
+                newPosition = j;
+            }
+        }
+    }
     // Deleting past bonuses
     for (int i = PlacedPieces[toMove].x%unitbonus; i < maxsize; i+=unitbonus)
     {
         for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
         {
-            //bonusEvaluations[PlacedPieces[toMove].color][i][j] -= (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
-            bonusEvaluations[PlacedPieces[toMove].color][i][j]--;
+            bonusEvaluations[PlacedPieces[toMove].color][i][j] -= (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
         }
     }
     string res;
@@ -307,8 +320,7 @@ string BestMoveForOrder()
     {
         for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
         {
-            //bonusEvaluations[PlacedPieces[toMove].color][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
-            bonusEvaluations[PlacedPieces[toMove].color][i][j]++;
+            bonusEvaluations[PlacedPieces[toMove].color][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
         }
     }
     return res;
@@ -323,8 +335,12 @@ string BestMoveForOrder()
 
 int minimaxAlg(int depth, bool isOrder, int alpha, int beta)
 {
+    vector<Piece> PiecesOnBoard = PlacedPieces;
+    sort(PiecesOnBoard.begin(), PiecesOnBoard.end(), compPiece);
+    if (TranspositionTable[VPtoString(PiecesOnBoard)].first && depth >= TranspositionTable[VPtoString(PiecesOnBoard)].second) return TranspositionTable[VPtoString(PiecesOnBoard)].first;
     if (depth >= maxdepth || PlacedPieces.size() == 49){
-        return evaluate();
+            TranspositionTable[VPtoString(PiecesOnBoard)] = {evaluate(), depth};
+        return TranspositionTable[VPtoString(PiecesOnBoard)].first;
     }
 
     if (isOrder)
