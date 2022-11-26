@@ -9,7 +9,7 @@ Made In C++
 ## To- do list
 
 - Iterative Deepening
-- Transpositional Table
+- ~~Transpositional Table~~
 - History Heuristic
 - Killer Heuristic
 - Aspiration Windows
