@@ -12,7 +12,7 @@
 using namespace std;
 
 int maxdepth = 2;
-int unitbonus = 2;
+int unitbonus = 1;
 const int Infinity = numeric_limits<int>::max();
 
 struct Piece{
@@ -48,7 +48,6 @@ int main()
     PlacedPieces.clear();
     while(getline(cin, InputStr))
     {
-        //TranspositionTable.clear();
         if (InputStr == "Start")
         {
             maxdepth = 3;
@@ -242,17 +241,26 @@ string BestMoveForOrder()
     char orientation = 'x';
     int toMove = 0;
     int newPosition = 0;
-    vector<Piece> PossibleBestMoves;
+    vector<pair<int, pair<char, int>>> PossibleBestMoves;
+
 
     for (int k = 0; k < (int)PlacedPieces.size(); k++)
     {
         if (!PlacedPieces[k].color) continue;
         int thisX = PlacedPieces[k].x;
         int thisY = PlacedPieces[k].y;
-        for (int i = thisX; i < maxsize; i++)
+        vector<pair<char, int>> LegalMoves;
+        for (int i = thisX; i < maxsize && (!board[i][thisY] || thisX == i); i++)
+            LegalMoves.push_back({'x', i});
+        for (int i = thisX - 1; i >= 0 && !board[i][thisY]; i--)
+            LegalMoves.push_back({'x', i});
+        for (int j = thisY + 1; j < maxsize && !board[thisX][j]; j++)
+            LegalMoves.push_back({'y', j});
+        for (int j = thisY - 1; j >= 0 && !board[thisX][j]; j--)
+            LegalMoves.push_back({'y', j});
+        for (int i = 0; i < LegalMoves.size(); i++)
         {
-            if (board[i][thisY] && thisX != i) break;
-            Slide('x', k, i);
+            Slide(LegalMoves[i].first, k, LegalMoves[i].second);
             int score = minimaxAlg(1, false, -Infinity, Infinity);
             if (bestScore <= score)
             {
@@ -261,97 +269,40 @@ string BestMoveForOrder()
                     bestScore = score;
                     PossibleBestMoves.clear();
                 }
-                maxdepth = 3;
-                PossibleBestMoves.push_back(PlacedPieces[k]);
-                maxdepth = 2;
+                PossibleBestMoves.push_back({k, LegalMoves[i]});
             }
-            Slide('x', k, thisX);
-        }
-        for (int i = thisX - 1; i >= 0; i--)
-        {
-            if (board[i][thisY]) break;
-            Slide('x', k, i);
-            int score = minimaxAlg(1, false, -Infinity, Infinity);
-            if (bestScore <= score)
-            {
-                if (bestScore < score)
-                {
-                    bestScore = score;
-                    PossibleBestMoves.clear();
-                }
-                maxdepth = 3;
-                PossibleBestMoves.push_back(PlacedPieces[k]);
-                maxdepth = 2;
-            }
-            Slide('x', k, thisX);
-        }
-        for (int j = thisY + 1; j < maxsize; j++)
-        {
-            if (board[thisX][j]) break;
-            Slide('y', k, j);
-            int score = minimaxAlg(1, false, -Infinity, Infinity);
-            if (bestScore <= score)
-            {
-                if (bestScore < score)
-                {
-                    bestScore = score;
-                    PossibleBestMoves.clear();
-                }
-                maxdepth = 3;
-                PossibleBestMoves.push_back(PlacedPieces[k]);
-                maxdepth = 2;
-            }
-            Slide('y', k, thisY);
-        }
-        for (int j = thisY - 1; j >= 0; j--)
-        {
-            if (board[thisX][j]) break;
-            Slide('y', k, j);
-            int score = minimaxAlg(1, false, -Infinity, Infinity);
-            if (bestScore <= score)
-            {
-                if (bestScore < score)
-                {
-                    bestScore = score;
-                    PossibleBestMoves.clear();
-                }
-                PossibleBestMoves.push_back(PlacedPieces[k]);
-            }
-            Slide('y', k, thisY);
+            Slide(LegalMoves[i].first, k, (LegalMoves[i].first == 'x' ? thisX : thisY));
         }
     }
+
     bestScore = -Infinity;
     maxdepth = 4;
     for (int i = 0; i < PossibleBestMoves.size(); i++)
     {
-        char thisOrientation;
-        int oldPos;
-        int thisPos;
-        if (PossibleBestMoves[i].x != PlacedPieces[PossibleBestMoves[i].k].x){
-            thisOrientation = 'x';
-            oldPos = PlacedPieces[PossibleBestMoves[i].k].x;
-            thisPos = PossibleBestMoves[i].x;
-        }else{
-            thisOrientation = 'y';
-            oldPos = PlacedPieces[PossibleBestMoves[i].k].y;
-            thisPos = PossibleBestMoves[i].y;
-        }
-        Slide(thisOrientation, PossibleBestMoves[i].k, thisPos);
+        char thisOrientation = PossibleBestMoves.back().second.first;
+        int thisToMove = PossibleBestMoves.back().first;
+        int thisPos = PossibleBestMoves.back().second.second;
+        int oldPos = (thisOrientation == 'x' ? PlacedPieces[thisToMove].x : PlacedPieces[thisToMove].y);
+        Slide(thisOrientation, thisToMove, thisPos);
         int score = minimaxAlg(1, false, -Infinity, Infinity);
-        Slide(thisOrientation, PossibleBestMoves[i].k, oldPos);
+        Slide(thisOrientation, thisToMove, oldPos);
         if (bestScore <= score){
             orientation = thisOrientation;
-            toMove = PossibleBestMoves[i].k;
+            toMove = thisToMove;
             newPosition = thisPos;
         }
     }
     maxdepth = 2;
 
+
+    //orientation = PossibleBestMoves.back().second.first;
+    //toMove = PossibleBestMoves.back().first;
+    //newPosition = PossibleBestMoves.back().second.second;
+
     // Deleting past bonuses
     for (int i = PlacedPieces[toMove].x%unitbonus; i < maxsize; i+=unitbonus)
     for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
     {
-        //bonusEvaluations[PlacedPieces[toMove].color][i][j] -= (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
         bonusEvaluations[PlacedPieces[toMove].color][i][j]--;
     }
     string res{char(PlacedPieces[toMove].x + 'A'), char(PlacedPieces[toMove].y + 'a')};
@@ -366,7 +317,6 @@ string BestMoveForOrder()
     for (int i = PlacedPieces[toMove].x%unitbonus; i < maxsize; i+=unitbonus)
     for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
     {
-       // bonusEvaluations[PlacedPieces[toMove].color][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
         bonusEvaluations[PlacedPieces[toMove].color][i][j]++;
     }
     return res;
@@ -398,45 +348,20 @@ int minimaxAlg(int depth, bool isOrder, int alpha, int beta)
             if (!PlacedPieces[k].color) continue;
             int thisX = PlacedPieces[k].x;
             int thisY = PlacedPieces[k].y;
-            for (int i = thisX; i < maxsize; i++)
+            vector<pair<char, int>> LegalMoves;
+            for (int i = thisX; i < maxsize && (!board[i][thisY] || thisX == i); i++)
+                LegalMoves.push_back({'x', i});
+            for (int i = thisX - 1; i >= 0 && !board[i][thisY]; i--)
+                LegalMoves.push_back({'x', i});
+            for (int j = thisY + 1; j < maxsize && !board[thisX][j]; j++)
+                LegalMoves.push_back({'y', j});
+            for (int j = thisY - 1; j >= 0 && !board[thisX][j]; j--)
+                LegalMoves.push_back({'y', j});
+            for (int i = 0; i < LegalMoves.size(); i++)
             {
-                if (board[i][thisY] && thisX != i) break;
-                Slide('x', k, i);
+                Slide(LegalMoves[i].first, k, LegalMoves[i].second);
                 score = minimaxAlg(depth + 1, false, alpha, beta);
-                Slide('x', k, thisX);
-
-                // fail hard beta cutoff
-                if (score >= beta) return beta;
-                alpha = max(alpha, score);
-            }
-            for (int i = thisX - 1; i >= 0; i--)
-            {
-                if (board[i][thisY]) break;
-                Slide('x', k, i);
-                score = minimaxAlg(depth + 1, false, alpha, beta);
-                Slide('x', k, thisX);
-
-                // fail hard beta cutoff
-                if (score >= beta) return beta;
-                alpha = max(alpha, score);
-            }
-            for (int j = thisY + 1; j < maxsize; j++)
-            {
-                if (board[thisX][j]) break;
-                Slide('y', k, j);
-                score = minimaxAlg(depth + 1, false, alpha, beta);
-                Slide('y', k, thisY);
-
-                // fail hard beta cutoff
-                if (score >= beta) return beta;
-                alpha = max(alpha, score);
-            }
-            for (int j = thisY - 1; j >= 0; j--)
-            {
-                if (board[thisX][j]) break;
-                Slide('y', k, j);
-                score = minimaxAlg(depth + 1, false, alpha, beta);
-                Slide('y', k, thisY);
+                Slide(LegalMoves[i].first, k, (LegalMoves[i].first == 'x' ? thisX : thisY));
 
                 // fail hard beta cutoff
                 if (score >= beta) return beta;
