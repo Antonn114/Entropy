@@ -45,11 +45,9 @@ bool compPiece( Piece const& a,  Piece const& b)
 string VPtoString(vector<Piece> VP)
 {
     string s;
-    for (int i = 0; i < VP.size(); i++)
+    for (int i = 0; i < (int)VP.size(); i++)
     {
-        s.push_back(VP[i].color + '0');
-        s.push_back(VP[i].x + '0');
-        s.push_back(VP[i].y + '0');
+        s += string{VP[i].color + '0', VP[i].x + '0', VP[i].y + '0'};
     }
     return s;
 }
@@ -211,24 +209,18 @@ string BestMoveForChaos()
 
     // Generate Bonuses
     for (int i = bestX%unitbonus; i < maxsize; i+=unitbonus)
+    for (int j = bestY%unitbonus; j < maxsize; j+=unitbonus)
     {
-        for (int j = bestY%unitbonus; j < maxsize; j+=unitbonus)
-        {
-            bonusEvaluations[ChaosInput][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - bestX) + abs(j - bestY))/unitbonus;
-        }
+        bonusEvaluations[ChaosInput][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - bestX) + abs(j - bestY))/unitbonus;
     }
 
-    string res;
-    res.push_back(bestX + 'A');
-    res.push_back(bestY + 'a');
-    return res;
+    return string{bestX + 'A', bestY + 'a'};
 }
 
 // ORDER'S MOVE
 string BestMoveForOrder()
 {
     int bestScore = -Infinity;
-    int chosenK = 0;
     char orientation = 'x';
     int toMove = 0;
     int newPosition = 0;
@@ -297,31 +289,24 @@ string BestMoveForOrder()
     }
     // Deleting past bonuses
     for (int i = PlacedPieces[toMove].x%unitbonus; i < maxsize; i+=unitbonus)
+    for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
     {
-        for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
-        {
-            bonusEvaluations[PlacedPieces[toMove].color][i][j] -= (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
-        }
+        bonusEvaluations[PlacedPieces[toMove].color][i][j] -= (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
     }
-    string res;
-    res.push_back(PlacedPieces[toMove].x + 'A');
-    res.push_back(PlacedPieces[toMove].y + 'a');
+
+    string res{PlacedPieces[toMove].x + 'A', PlacedPieces[toMove].y + 'a'};
     if (orientation == 'x')
-    {
-        res.push_back(newPosition + 'A');
-        res.push_back(PlacedPieces[toMove].y + 'a');
-    }else{
-        res.push_back(PlacedPieces[toMove].x + 'A');
-        res.push_back(newPosition + 'a');
+        res += string{newPosition + 'A', PlacedPieces[toMove].y + 'a'};
+    else{
+        res += string{PlacedPieces[toMove].x + 'A', newPosition + 'a'};
     }
     Slide(orientation, toMove, newPosition);
+
     // Generating new bonuses
     for (int i = PlacedPieces[toMove].x%unitbonus; i < maxsize; i+=unitbonus)
+    for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
     {
-        for (int j = PlacedPieces[toMove].y%unitbonus; j < maxsize; j+=unitbonus)
-        {
-            bonusEvaluations[PlacedPieces[toMove].color][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
-        }
+        bonusEvaluations[PlacedPieces[toMove].color][i][j] += (maxsize*2 - 1)/unitbonus - (abs(i - PlacedPieces[toMove].x) + abs(j - PlacedPieces[toMove].y))/unitbonus;
     }
     return res;
 }
@@ -337,21 +322,22 @@ int minimaxAlg(int depth, bool isOrder, int alpha, int beta)
 {
     vector<Piece> PiecesOnBoard = PlacedPieces;
     sort(PiecesOnBoard.begin(), PiecesOnBoard.end(), compPiece);
-    if (TranspositionTable[VPtoString(PiecesOnBoard)].first && depth >= TranspositionTable[VPtoString(PiecesOnBoard)].second) return TranspositionTable[VPtoString(PiecesOnBoard)].first;
+    string s = VPtoString(PiecesOnBoard);
+    if (TranspositionTable[s].first && depth >= TranspositionTable[s].second) return TranspositionTable[s].first;
+
     if (depth >= maxdepth || PlacedPieces.size() == 49){
-            TranspositionTable[VPtoString(PiecesOnBoard)] = {evaluate(), depth};
-        return TranspositionTable[VPtoString(PiecesOnBoard)].first;
+        TranspositionTable[s] = {evaluate(), depth};
+        return TranspositionTable[s].first;
     }
 
     if (isOrder)
     {
         int score;
-        for (int k = 0; k < PlacedPieces.size(); k++)
+        for (int k = 0; k < (int)PlacedPieces.size(); k++)
         {
             if (!PlacedPieces[k].color) continue;
             int thisX = PlacedPieces[k].x;
             int thisY = PlacedPieces[k].y;
-            int thisChip = PlacedPieces[k].color;
             for (int i = thisX; i < maxsize; i++)
             {
                 if (board[i][thisY] && thisX != i) break;
