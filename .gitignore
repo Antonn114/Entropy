@@ -3,4 +3,6 @@ obj/
 *.cbp
 *.depend
 *.layout
+*.exe
 04.cpp
+.vscode/
