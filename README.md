@@ -8,16 +8,29 @@ Made In C++
 
 ## To- do list
 
-- Iterative Deepening
-- ~~Transpositional Table~~
-- History Heuristic
-- Killer Heuristic
-- Aspiration Windows
-- Principal Variation Search
+✅ Minimax
+
+✅ Alpha - beta pruning
+
+✅ Transpositional Table
+
+✅ Principal Variation Search + Null Windows
+
+🟨 Monte Carlo Tree Search
+
+🟨 Expectiminimax
+
+🔵 Expected value
+
+🔵 Aspiration Windows
+
+🔵 Iterative Deepening
+
+🔵 History Heuristic
 
 Lưu ý rằng một số topics trên không cần phải được áp dụng luôn
 
-## Notes for the above topics
+## Notes for some of the above topics
 
 - Iterative Deepening: ta tăng $depth = depth + 1$ mỗi lượt ( $depth_{0} = 1$ ).
 - Transpositional Table: ta lưu lại các vị trí của bàn mà có thể phải lặp đi lặp lại để giảm độ phức tạp (DP).
