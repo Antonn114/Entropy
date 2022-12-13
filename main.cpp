@@ -12,27 +12,6 @@ using namespace std;
 
 ///             === VARIABLES ===
 
-
-/*
-? BOARD POSITION REF
-
-	COL 1	2	3	4	5	6	7
-ROW	
-1	    1	2	3	4	5	6	7
-2	    8	9	10	11	12	13	14
-3	    15	16	17	18	19	20	21
-4	    22	23	24	25	26	27	28
-5	    29	30	31	32	33	34	35
-6	    36	37	38	39	40	41	42
-7	    43	44	45	46	47	48	49
-
-? MOVING IN LOCAL POSITION
-	-8	-7	-6
-	-1	0	+1
-	+6	+7	+8
-
-*/
-
 const int n = 7;
 const int boardSize = n*n + 1;
 int maxdepth = 3;
