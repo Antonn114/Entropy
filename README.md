@@ -14,19 +14,21 @@ Made In C++
 
 ✅ Transpositional Table
 
-🟨 Principal Variation Search + Null Windows
+✅ Principal Variation Search
 
-🟨 Monte Carlo Tree Search
+🔵 Monte Carlo Tree Search
 
-🟨 Expectiminimax
-
-🔵 Expected value
+🔵 Expectiminimax
 
 🔵 Aspiration Windows
 
 🔵 Iterative Deepening
 
 🔵 History Heuristic
+
+## miscs
+
+✅ Principal Variation Line
 
 ## strategies
 

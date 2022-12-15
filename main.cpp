@@ -7,40 +7,46 @@
 #include <map>
 #include <string>
 #include <array>
-#include <time.h>
 
 using namespace std;
 
-///             === VARIABLES ===
-
 const int n = 7;
-const int boardSize = n*n + 1;
-int maxdepth = 3;
+const int boardSize = n * n + 1;
 const double Infinity = 1e9;
-int dpos[] = {-7, 7, -1, 1};
+const int dpos[] = {-7, 7, -1, 1};
+const int maxdepth = 3;
 
-int row(int i) {
-    return ((i - 1)/7);
+int row(int i)
+{
+    return ((i - 1) / 7);
 }
-int col(int i) {
-    return ((i - 1)%7);
+int col(int i)
+{
+    return ((i - 1) % 7);
 }
+int CodeToPosition(string code)
+{
+    return int(code[0] - 'A') * 7 + int(code[1] - 'a') + 1;
+}
+
+array<string, boardSize> PositionToCode{"NIL", "Aa", "Ab", "Ac", "Ad", "Ae", "Af", "Ag", "Ba", "Bb", "Bc", "Bd", "Be", "Bf", "Bg", "Ca", "Cb", "Cc", "Cd", "Ce", "Cf", "Cg", "Da", "Db", "Dc", "Dd", "De", "Df", "Dg", "Ea", "Eb", "Ec", "Ed", "Ee", "Ef", "Eg", "Fa", "Fb", "Fc", "Fd", "Fe", "Ff", "Fg", "Ga", "Gb", "Gc", "Gd", "Ge", "Gf", "Gg"};
+
 typedef struct Piece
 {
-    int pos;	// board position (resp. to the above)
-    int color;
-    int k;      // piece index in PlacedPieces
-    Piece(int a, int c, int _k) : pos(a), color(c), k(_k) {}
+    int pos; // board position (resp. to the above)
+    int side;
+    int k; // piece index in PlacedPieces
+
+    Piece(int a, int c, int _k) : pos(a), side(c), k(_k) {}
 } Piece;
 
 typedef struct Move
 {
     string content;
-    int ChaosColor;
-    int OrderIndex;
+    int flag;
 
-    Move() : content(string()), ChaosColor(-1), OrderIndex(-1) {}
-    Move(string m, int c, int o): content(m), ChaosColor(c), OrderIndex(o) {}
+    Move() : content(string()), flag(-1) {}
+    Move(string m, int f) : content(m), flag(f) {}
 } Move;
 
 typedef struct TTEntry
@@ -57,45 +63,36 @@ typedef struct TTEntry
 typedef struct Flag
 {
     // A generalised collection of flags for search and pruning.
-    bool unknownColour = true;
+    bool isRandomColor = true;
 } Flag;
 
 array<int, boardSize> board = {0};
 vector<Piece> PlacedPieces;
 
-map<array<int, boardSize>, TTEntry> TranspositionTable;
-
 int colourInput;
 string RawInput;
 
-void doMove(int color, Move move);
-void undoMove(int color, Move move);
+void doMove(int side, Move move);
+void undoMove(int side, Move move);
 
-string BestMoveForSide(int color);
+string BestMoveForSide(int side);
 double evaluate(bool GetHeuristic = true);
-double Search(int depth, int color, double alpha, double beta, Flag flag);
+double Search(int depth, int side, double alpha, double beta, Flag flag);
+
+map<array<int, boardSize>, TTEntry> TranspositionTable;
+int PVLength[boardSize];
+Move PVTable[boardSize][boardSize];
 
 void showBoard();
 
-vector<Move> returnMoves;
-double coeff[] = {0, 0, 1.21249, 1.8809, 2.45611, 2.64828, 3.47708, 3.37076};
-
-double fRand(double fMin, double fMax)
-{
-    double f = (double)rand() / RAND_MAX;
-    return fMin + f * (fMax - fMin);
-}
-
-///             === DRIVER CODE ===
+double coeff[] = {0, 0, 1.21249, 1.8809, 2.45611, 2.64828, 3.47708, 3.77076};
 
 int main()
 {
     ios_base::sync_with_stdio(false);
     cin.tie(0);
-    srand(time(NULL));
     while (getline(cin, RawInput))
     {
-        returnMoves.clear();
         if (RawInput == "Start")
             continue;
         if (RawInput == "Quit")
@@ -109,21 +106,39 @@ int main()
         }
         if (RawInput.length() == 3)
         {
-            doMove(-1, Move(RawInput.substr(1, 2), RawInput[0] - '0', -1));
+            doMove(-1, Move(RawInput.substr(1, 2), RawInput[0] - '0'));
             string move = BestMoveForSide(1);
             cout << move << endl;
             continue;
         }
         if (RawInput.length() == 4)
         {
-            auto isPiece = [](const Piece& p ){ return p.pos == (RawInput[0] - 'A')*7 + RawInput[1] - 'a' + 1; };
+            auto isPiece = [](const Piece &p)
+            { return p.pos == CodeToPosition(RawInput); };
             int PieceIndex = find_if(PlacedPieces.begin(), PlacedPieces.end(), isPiece) - PlacedPieces.begin();
-            doMove(1, Move(RawInput, -1, PieceIndex));
+            doMove(1, Move(RawInput, PieceIndex));
             continue;
         }
     }
 
     return 0;
+}
+
+string BestMoveForSide(int side)
+{
+    Flag flag;
+    flag.isRandomColor = (side != -1);
+    double score = Search(0, side, -Infinity, Infinity, flag);
+    cerr << "score: " << score << " "
+         << "pv: ";
+    for (int i = 0; i < PVLength[0]; i++)
+    {
+        cerr << PVTable[0][i].flag << PVTable[0][i].content << " ";
+    }
+    // e.g: score: -5 pv: 12CcCb 2Aa 2EcEb
+    cerr << endl;
+    doMove(side, PVTable[0][0]);
+    return PVTable[0][0].content;
 }
 
 double evaluate(bool GetHeuristic)
@@ -163,16 +178,16 @@ void doMove(int side, Move move)
 {
     if (side > 0)
     {
-        int oldPos = int(move.content[0] - 'A')*7 + int(move.content[1] - 'a') + 1;
-        int newPos = int(move.content[2] - 'A')*7 + int(move.content[3] - 'a') + 1;
+        int oldPos = CodeToPosition(move.content.substr(0, 2));
+        int newPos = CodeToPosition(move.content.substr(2, 2));
         swap(board[oldPos], board[newPos]);
-        PlacedPieces[move.OrderIndex].pos = newPos;
+        PlacedPieces[move.flag].pos = newPos;
     }
     else
     {
-        int movePos = int(move.content[0] - 'A')*7 + int(move.content[1] - 'a') + 1;
-        board[movePos] = move.ChaosColor;
-        PlacedPieces.push_back(Piece(movePos, move.ChaosColor, PlacedPieces.size()));
+        int movePos = CodeToPosition(move.content);
+        board[movePos] = move.flag;
+        PlacedPieces.push_back(Piece(movePos, move.flag, PlacedPieces.size()));
     }
     return;
 }
@@ -181,121 +196,114 @@ void undoMove(int side, Move move)
 {
     if (side > 0)
     {
-        Move newMove = Move(move.content.substr(2, 2) + move.content.substr(0, 2), -1, move.OrderIndex);
+        Move newMove = Move(move.content.substr(2, 2) + move.content.substr(0, 2), move.flag);
         doMove(side, newMove);
     }
     else
     {
-        int movePos = (move.content[0] - 'A')*7 + (move.content[1] - 'a') + 1;
-        board[movePos] = 0;
+        board[CodeToPosition(move.content)] = 0;
         PlacedPieces.pop_back();
     }
+    return;
 }
 
 void showBoard()
 {
     for (int i = 1; i < boardSize; i++)
     {
-        if (i % 7 == 1) cout << "\n";
-        cout << board[i] << " ";
+        if (i % 7 == 1)
+            cerr << "\n";
+        cerr << board[i] << " ";
+    }
+    cerr << "\n";
+    return;
+}
+
+void registerMovesForChaos(vector<Move> &LegalMoves, Flag flag)
+{
+    for (int i = 1; i < boardSize; i++)
+    {
+        if (board[i])
+            continue;
+        if (!flag.isRandomColor)
+        {
+            LegalMoves.push_back(Move(PositionToCode[i], colourInput));
+            continue;
+        }
+        for (int k = 1; k <= n; k++)
+        {
+            LegalMoves.push_back(Move(PositionToCode[i], k));
+        }
     }
     return;
 }
 
-string BestMoveForSide(int color)
+void registerMovesForOrder(vector<Move> &LegalMoves, Flag flag)
 {
-    Flag flag;
-    flag.unknownColour = (color != -1);
-    Search(0, color, -Infinity, Infinity, flag);
-    const auto returnMove = returnMoves[0];
-    doMove(color, returnMove);
-    return returnMove.content;
-}
-
-void registerLegalMoves(vector<Move> &LegalMoves, int color, Flag flag)
-{
-    LegalMoves.clear();
-    if (color > 0)
+    for (int k = 0; k < (int)PlacedPieces.size(); k++)
     {
-        for (int k = 0; k < max((int)PlacedPieces.size(), 1); k++)
+        int fromPosition = PlacedPieces[k].pos;
+        LegalMoves.push_back(Move(PositionToCode[fromPosition] + PositionToCode[fromPosition], k));
+        for (int i = 0; i < 4; i++)
         {
-            int thisPos = PlacedPieces[k].pos;
-            string oldPos = string{char(row(thisPos) + 'A'), char(col(thisPos) + 'a')};
-
-            LegalMoves.push_back(Move(oldPos + oldPos, -1, k));
-            for (int i = 0; i < 4; i++)
+            int toPosition = fromPosition + dpos[i];
+            while (!board[toPosition] && toPosition < boardSize && toPosition >= 1)
             {
-                for (int j = 1; thisPos + dpos[i] * j < boardSize && thisPos + dpos[i] * j >= 1; j++)
-                {
-                    if (board[thisPos + dpos[i] * j] || (abs(dpos[i]) == 1 && row(thisPos + dpos[i] * j) != row(thisPos + dpos[i] * (j - 1))))
-                        break;
-                    LegalMoves.push_back(Move(oldPos + string{char(row(thisPos + dpos[i] * j) + 'A'), char(col(thisPos + dpos[i] * j) + 'a')}, -1, k));
-                }
-            }
-        }
-    }
-    else
-    {
-        for (int i = 1; i < boardSize; i++)
-        {
-            if (board[i])
-                continue;
-            if (!flag.unknownColour)
-            {
-                LegalMoves.push_back(Move(string{char(row(i) + 'A'), char(col(i) + 'a')}, colourInput, -1));
-                continue;
-            }
-            for (int k = 1; k <= n; k++)
-            {
-                LegalMoves.push_back(Move(string{char(row(i) + 'A'), char(col(i) + 'a')}, k, -1));
+                if (abs(dpos[i]) == 1 && row(toPosition) != row(toPosition - dpos[i]))
+                    break;
+                LegalMoves.push_back(Move(PositionToCode[fromPosition] + PositionToCode[toPosition], k));
+                toPosition += dpos[i];
             }
         }
     }
     return;
 }
 
-double Search(int depth, int color, double alpha, double beta, Flag flag)
+double Search(int depth, int side, double alpha, double beta, Flag flag)
 {
-    if (TranspositionTable[board].isValidEntry && depth >= TranspositionTable[board].depth)
-        return color * TranspositionTable[board].value;
-
+    PVLength[depth] = depth;
     if (depth >= maxdepth || PlacedPieces.size() >= 49)
     {
-        TranspositionTable[board] = TTEntry(evaluate(true), depth);
-        return color * TranspositionTable[board].value;
+        return side * evaluate();
     }
 
-    double score = 0;
     vector<Move> LegalMoves;
-    registerLegalMoves(LegalMoves, color, flag);
+    if (side > 0)
+        registerMovesForOrder(LegalMoves, flag);
+    else
+        registerMovesForChaos(LegalMoves, flag);
 
-    flag.unknownColour = true;
+    double score = 0;
+    flag.isRandomColor = true;
     bool searchPVS = true;
 
     for (const auto &move : LegalMoves)
     {
-        doMove(color, move);
+        doMove(side, move);
         if (searchPVS)
         {
-            score = -Search(depth + 1, -color, -beta, -alpha, flag);
-        }else{
-            score = -Search(depth + 1, -color, -alpha - 1, -alpha, flag);   // null window
-            if (score > alpha)  // fail soft alpha re-search
-                score = -Search(depth + 1, -color, -beta, -alpha, flag);
+            score = -Search(depth + 1, -side, -beta, -alpha, flag);
         }
-        undoMove(color, move);
+        else
+        {
+            score = -Search(depth + 1, -side, -alpha - 1, -alpha, flag);
+            if (score > alpha)
+                score = -Search(depth + 1, -side, -beta, -alpha, flag);
+        }
+        undoMove(side, move);
 
-        // fail hard beta cutoff
         if (score >= beta)
             return beta;
-        
+
         if (score > alpha)
         {
-            if (depth == 0)
-            {
-                returnMoves = {move};
-            }
             alpha = score;
+
+            PVTable[depth][depth] = move;
+            for (int ply = depth + 1; ply < PVLength[depth + 1]; ply++)
+                PVTable[depth][ply] = PVTable[depth + 1][ply];
+            PVLength[depth] = PVLength[depth + 1];
+
             searchPVS = false;
         }
     }
