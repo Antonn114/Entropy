@@ -8,6 +8,9 @@
 #include <string>
 #include <array>
 
+#define CHAOS -1
+#define ORDER 1
+
 using namespace std;
 
 const int n = 7;
@@ -79,7 +82,6 @@ string BestMoveForSide(int side);
 double evaluate(bool GetHeuristic = true);
 double Search(int depth, int side, double alpha, double beta, Flag flag);
 
-map<array<int, boardSize>, TTEntry> TranspositionTable;
 int PVLength[boardSize];
 Move PVTable[boardSize][boardSize];
 
@@ -100,14 +102,14 @@ int main()
         if (RawInput.length() == 1)
         {
             colourInput = RawInput[0] - '0';
-            string move = BestMoveForSide(-1);
+            string move = BestMoveForSide(CHAOS);
             cout << move << endl;
             continue;
         }
         if (RawInput.length() == 3)
         {
-            doMove(-1, Move(RawInput.substr(1, 2), RawInput[0] - '0'));
-            string move = BestMoveForSide(1);
+            doMove(CHAOS, Move(RawInput.substr(1, 2), RawInput[0] - '0'));
+            string move = BestMoveForSide(ORDER);
             cout << move << endl;
             continue;
         }
@@ -116,7 +118,7 @@ int main()
             auto isPiece = [](const Piece &p)
             { return p.pos == CodeToPosition(RawInput); };
             int PieceIndex = find_if(PlacedPieces.begin(), PlacedPieces.end(), isPiece) - PlacedPieces.begin();
-            doMove(1, Move(RawInput, PieceIndex));
+            doMove(ORDER, Move(RawInput, PieceIndex));
             continue;
         }
     }
@@ -129,14 +131,14 @@ string BestMoveForSide(int side)
     Flag flag;
     flag.isRandomColor = (side != -1);
     double score = Search(0, side, -Infinity, Infinity, flag);
-    cerr << "score: " << score << " "
-         << "pv: ";
-    for (int i = 0; i < PVLength[0]; i++)
-    {
-        cerr << PVTable[0][i].flag << PVTable[0][i].content << " ";
-    }
-    // e.g: score: -5 pv: 12CcCb 2Aa 2EcEb
-    cerr << endl;
+    // cerr << "score: " << score << " "
+    //      << "pv: ";
+    // for (int i = 0; i < PVLength[0]; i++)
+    // {
+    //     cerr << PVTable[0][i].flag << PVTable[0][i].content << " ";
+    // }
+    // // e.g: score: -5 pv: 12CcCb 2Aa 2EcEb
+    // cerr << endl;
     doMove(side, PVTable[0][0]);
     return PVTable[0][0].content;
 }
@@ -176,7 +178,7 @@ double evaluate(bool GetHeuristic)
 
 void doMove(int side, Move move)
 {
-    if (side > 0)
+    if (side == ORDER)
     {
         int oldPos = CodeToPosition(move.content.substr(0, 2));
         int newPos = CodeToPosition(move.content.substr(2, 2));
@@ -194,7 +196,7 @@ void doMove(int side, Move move)
 
 void undoMove(int side, Move move)
 {
-    if (side > 0)
+    if (side == ORDER)
     {
         Move newMove = Move(move.content.substr(2, 2) + move.content.substr(0, 2), move.flag);
         doMove(side, newMove);
@@ -268,7 +270,7 @@ double Search(int depth, int side, double alpha, double beta, Flag flag)
     }
 
     vector<Move> LegalMoves;
-    if (side > 0)
+    if (side == ORDER)
         registerMovesForOrder(LegalMoves, flag);
     else
         registerMovesForChaos(LegalMoves, flag);
