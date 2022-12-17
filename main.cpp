@@ -67,6 +67,7 @@ typedef struct Flag
 {
     // A generalised collection of flags for search and pruning.
     bool isRandomColor = true;
+    Flag(bool _1) : isRandomColor(_1) {}
 } Flag;
 
 array<int, boardSize> board = {0};
@@ -128,17 +129,19 @@ int main()
 
 string BestMoveForSide(int side)
 {
-    Flag flag;
-    flag.isRandomColor = (side != -1);
-    double score = Search(0, side, -Infinity, Infinity, flag);
-    // cerr << "score: " << score << " "
-    //      << "pv: ";
-    // for (int i = 0; i < PVLength[0]; i++)
-    // {
-    //     cerr << PVTable[0][i].flag << PVTable[0][i].content << " ";
-    // }
-    // // e.g: score: -5 pv: 12CcCb 2Aa 2EcEb
-    // cerr << endl;
+    double score = Search(0, side, -Infinity, Infinity, Flag((side != -1)));
+    cerr << "score: " << score << " "
+         << "pv: ";
+    for (int i = 0; i < PVLength[0]; i++)
+    {
+        if (i % 2 == 0)
+            cerr << i / 2 + 1 << ". ";
+        if (PVTable[0][i].content.length() == 2)
+            cerr << PVTable[0][i].flag;
+        cerr << PVTable[0][i].content << " ";
+    }
+    // e.g: score: -5 pv: 1. CcCb 2Aa 2. EcEb
+    cerr << endl;
     doMove(side, PVTable[0][0]);
     return PVTable[0][0].content;
 }
@@ -251,7 +254,7 @@ void registerMovesForOrder(vector<Move> &LegalMoves, Flag flag)
             int toPosition = fromPosition + dpos[i];
             while (!board[toPosition] && toPosition < boardSize && toPosition >= 1)
             {
-                if (abs(dpos[i]) == 1 && row(toPosition) != row(toPosition - dpos[i]))
+                if (row(fromPosition) != row(toPosition))
                     break;
                 LegalMoves.push_back(Move(PositionToCode[fromPosition] + PositionToCode[toPosition], k));
                 toPosition += dpos[i];
@@ -265,9 +268,7 @@ double Search(int depth, int side, double alpha, double beta, Flag flag)
 {
     PVLength[depth] = depth;
     if (depth >= maxdepth || PlacedPieces.size() >= 49)
-    {
         return side * evaluate();
-    }
 
     vector<Move> LegalMoves;
     if (side == ORDER)
@@ -283,9 +284,7 @@ double Search(int depth, int side, double alpha, double beta, Flag flag)
     {
         doMove(side, move);
         if (searchPVS)
-        {
             score = -Search(depth + 1, -side, -beta, -alpha, flag);
-        }
         else
         {
             score = -Search(depth + 1, -side, -alpha - 1, -alpha, flag);
