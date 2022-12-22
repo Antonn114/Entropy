@@ -20,7 +20,6 @@ Made In C++
 
 ✅ Principal Variation Line
 
-
 ## footnotes
 
 - Tạm thời bỏ qua neural network :D

@@ -139,7 +139,6 @@ public:
             child->action = move;
             doMove(child->state, move);
             children->push_back(child);
-            undoMove(child->state, move);
         }
         return;
     }
@@ -185,17 +184,36 @@ public:
         return;
     }
 
-    int randomPlayout(Node node)
+    double randomPlayout(Node node)
     {
+        int score = 0;
         Node _node = node;
-
-        while (_node.state.pieces.size() < 49)
+        int k = _node.state.pieces.size();
+        int rollDepth = 4;
+        // vector<Move> PVLINE[rollDepth];
+        for (int i = 0; i < rollDepth; i++)
         {
-            _node.playoutPolicy();
-            _node.toPlay = -_node.toPlay;
+            _node = node;
+            // PVLINE[i].push_back(_node.action);
+            while (_node.state.pieces.size() < min(k + rollDepth, 49))
+            {
+                _node.toPlay = -_node.toPlay;
+                _node.playoutPolicy();
+                // PVLINE[i].push_back(_node.action);
+            }
+            score += evaluate(_node.state, false);
         }
+        // cout << "score: " << score / (rollDepth * 1.0) << "\n";
+        // for (int i = 0; i < rollDepth; i++)
+        // {
+        //     for (const auto &move : PVLINE[i])
+        //     {
+        //         cout << move.content << " ";
+        //     }
+        //     cout << endl;
+        // }
 
-        return evaluate(_node.state, false);
+        return score / rollDepth;
     }
 
     Node *MonteCarlo(State _state, int simulationDepth)
@@ -214,7 +232,7 @@ public:
                 node = node->select();
                 searchPath.push_back(node);
             }
-            int score = randomPlayout(*node);
+            double score = randomPlayout(*node);
             if (node->state.pieces.size() < 49)
             {
                 node->expand();
@@ -222,7 +240,7 @@ public:
             for (int j = searchPath.size() - 1; j >= 0; j--)
             {
                 searchPath[j]->visitCount++;
-                searchPath[j]->valueSum += (double)searchPath[j]->toPlay * double(score / 80.0);
+                searchPath[j]->valueSum += (searchPath[j]->toPlay) * score / 373.0;
             }
         }
         return root;
@@ -272,7 +290,7 @@ string BestMoveForSide(int side)
     // e.g: score: -5 pv: 1. CcCb 2Aa 2. EcEb
     Node *game = new Node(1, side);
     game->state = gameState;
-    game = game->MonteCarlo(gameState, 250);
+    game = game->MonteCarlo(gameState, 400);
     game = game->select();
     doMove(gameState, game->action);
     return game->action.content;
