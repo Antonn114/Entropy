@@ -1,6 +1,6 @@
 # entropy bot
 
-Đỗ Ngọc Anh Trung & Nguyễn Đăng Dũng
+DTTH class assignment
 
 [click me !!!](https://www.codecup.nl/entropy/rules.php)
 
